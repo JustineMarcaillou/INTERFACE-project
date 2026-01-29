@@ -25,13 +25,16 @@ def sir_model_with_masks_SEIR(y, t, params):
     params: dictionary of parameters
     """
     S, E, I, R = y
+    N = S+E+I+R
     beta = params['beta']
     sigma = params['sigma']
     gamma = params['gamma']
-    dSdt = -beta * S * I
-    dEdt = beta * S * I - sigma * E
-    dIdt = sigma * E - gamma * I
-    dRdt = gamma * I
+    q = params['q']
+    z = params['z']
+    dSdt = -beta * S * I/N
+    dEdt = beta * S * I/N - sigma * E - q * I
+    dIdt = sigma * E - gamma * I - z * I
+    dRdt = gamma * I + z * I
     return [dSdt, dEdt, dIdt, dRdt]
 
 def plot_sir_model_simulation_masks_SEIR(result, days, title_addon='', highlight=None):
@@ -76,7 +79,9 @@ def mse_loss_SEIR(params, t, data, y0):
     params_dict = {
         'beta': params[0],
         'sigma': params[1],
-        'gamma': params[2]
+        'gamma': params[2],
+        'q': params[3],
+        'z': params[4]
     }
     result = odeint(sir_model_with_masks_SEIR, y0, t, args=(params_dict,))
     loss = np.mean((result[:, 0] - data['Susceptible'])**2 +
@@ -93,7 +98,9 @@ def optimize_params_SEIR(data, population_size, initial_params, og_params):
     bounds = [
         (0, 0.1),   # beta
         (0, 0.5),   # sigma
-        (0, 0.5)    # gamma
+        (0, 0.5),   # gamma
+        (0, 0.5),   # q
+        (0, 0.5)    # z
     ]
     result_min = minimize(mse_loss_SEIR, initial_params, args=(t, data, y0), bounds=bounds, method='L-BFGS-B')
     params_min = create_params_dict_SEIR(result_min.x)
@@ -105,7 +112,9 @@ def create_params_dict_SEIR(optimized_params):
     params_dict = {
         'beta': optimized_params[0],
         'sigma': optimized_params[1],
-        'gamma': optimized_params[2]
+        'gamma': optimized_params[2],
+        'q': optimized_params[3],
+        'z': optimized_params[4]
     }
     return params_dict
 
@@ -118,13 +127,13 @@ def sir_model_with_masks_SIR(y, t, params):
     params: dictionary of parameters
     """
     S, I, R = y
+    N=S+I+R
     beta = params['beta']
     gamma = params['gamma']
-    
-    dSdt = -beta * S * I
-    dIdt = beta * S * I - gamma * I
-    dRdt = gamma * I
-    
+    z = params['z']
+    dSdt = -beta * S * I/N
+    dIdt = beta * S * I/N - gamma * I - z * I
+    dRdt = gamma * I + z * I
     return [dSdt, dIdt, dRdt]
 
 def plot_sir_model_simulation_masks_SIR(result, days, title_addon='', highlight=None):
@@ -168,7 +177,8 @@ def generate_sir_model_data_masks_SIR(population_size, params, days, y0=None, se
 def mse_loss_SIR(params, t, data, y0):
     params_dict = {
         'beta': params[0],
-        'gamma': params[1]
+        'gamma': params[1],
+        'z': params[2]
     }
     result = odeint(sir_model_with_masks_SIR, y0, t, args=(params_dict,))
     loss = np.mean((result[:, 0] - data['Susceptible'])**2 +
@@ -183,7 +193,8 @@ def optimize_params_SIR(data, population_size, initial_params, og_params):
     y0 = [data['Susceptible'][0], data['Infected'][0], data['Recovered'][0]]
     bounds = [
         (0, 0.1),   # beta
-        (0, 0.5)    # gamma
+        (0, 0.5),   # gamma
+        (0, 0.5)    # z
     ]
     result_min = minimize(mse_loss_SIR, initial_params, args=(t, data, y0), bounds=bounds, method='L-BFGS-B')
     params_min = create_params_dict_SIR(result_min.x)
@@ -194,7 +205,8 @@ def optimize_params_SIR(data, population_size, initial_params, og_params):
 def create_params_dict_SIR(optimized_params):
     params_dict = {
         'beta': optimized_params[0],
-        'gamma': optimized_params[1]
+        'gamma': optimized_params[1],
+        'z': optimized_params[2]
     }
     return params_dict
 
@@ -207,13 +219,14 @@ def sir_model_with_masks_SIRD(y, t, params):
     params: dictionary of parameters
     """
     S, I, R, D = y
+    N = S+I+R+D
     beta = params['beta']
     gamma = params['gamma']
-    alpha = params['alpha']
     delta = params['delta']
-    dSdt = -beta * S * I + alpha * R
-    dIdt = beta * S * I - gamma * I - delta * I
-    dRdt = gamma * I - alpha * R
+    z = params['z']
+    dSdt = -beta * S * I/N
+    dIdt = beta * S * I/N - gamma * I - delta * I - z * I
+    dRdt = gamma * I + z * I
     dDdt = delta * I
     return [dSdt, dIdt, dRdt, dDdt]
 
@@ -259,8 +272,8 @@ def mse_loss_SIRD(params, t, data, y0):
     params_dict = {
         'beta': params[0],
         'gamma': params[1],
-        'alpha': params[2],
-        'delta': params[3]
+        'delta': params[2],
+        'z': params[3]
     }
     result = odeint(sir_model_with_masks_SIRD, y0, t, args=(params_dict,))
     loss = np.mean((result[:, 0] - data['Susceptible'])**2 +
@@ -277,8 +290,8 @@ def optimize_params_SIRD(data, population_size, initial_params, og_params):
     bounds = [
         (0, 0.1),   # beta
         (0, 0.5),   # gamma
-        (0, 0.5),   # alpha
-        (0, 0.2)    # delta
+        (0, 0.2),   # delta
+        (0, 0.5)    # z
     ]
     result_min = minimize(mse_loss_SIRD, initial_params, args=(t, data, y0), bounds=bounds, method='L-BFGS-B')
     params_min = create_params_dict_SIRD(result_min.x)
@@ -290,8 +303,8 @@ def create_params_dict_SIRD(optimized_params):
     params_dict = {
         'beta': optimized_params[0],
         'gamma': optimized_params[1],
-        'alpha': optimized_params[2],
-        'delta': optimized_params[3]
+        'delta': optimized_params[2],
+        'z': optimized_params[3]
     }
     return params_dict
 
@@ -304,15 +317,17 @@ def sir_model_with_masks_SEIRD(y, t, params):
     params: dictionary of parameters
     """
     S, E, I, R, D = y
+    N=S+E+I+R+D
     beta = params['beta']
     sigma = params['sigma']
     gamma = params['gamma']
-    alpha = params['alpha']
     delta = params['delta']
-    dSdt = -beta * S * I + alpha * R 
-    dEdt = beta * S * I - sigma * E 
-    dIdt = sigma * E - gamma * I - delta * I
-    dRdt = gamma * I - alpha * R 
+    q = params['q']
+    z = params['z']
+    dSdt = -beta * S * I/N
+    dEdt = beta * S * I/N - sigma * E - q * E
+    dIdt = sigma * E - gamma * I - delta * I - z * I
+    dRdt = gamma * I + z * I
     dDdt = delta * I
     return [dSdt, dEdt, dIdt, dRdt, dDdt]
 
@@ -359,8 +374,9 @@ def mse_loss_SEIRD(params, t, data, y0):
         'beta': params[0],
         'sigma': params[1],
         'gamma': params[2],
-        'alpha': params[3],
-        'delta': params[4]
+        'delta': params[3],
+        'q': params[4],
+        'z': params[5]
     }
     result = odeint(sir_model_with_masks_SEIRD, y0, t, args=(params_dict,))
     loss = np.mean((result[:, 0] - data['Susceptible'])**2 +
@@ -379,8 +395,9 @@ def optimize_params_SEIRD(data, population_size, initial_params, og_params):
         (0, 0.1),   # beta
         (0, 0.5),   # sigma
         (0, 0.5),   # gamma
-        (0, 0.5),   # alpha
-        (0, 0.2)    # delta
+        (0, 0.2),   # delta
+        (0, 0.5),   # q
+        (0, 0.5)    # z
     ]
     result_min = minimize(mse_loss_SEIRD, initial_params, args=(t, data, y0), bounds=bounds, method='L-BFGS-B')
     params_min = create_params_dict_SEIRD(result_min.x)
@@ -393,43 +410,41 @@ def create_params_dict_SEIRD(optimized_params):
         'beta': optimized_params[0],
         'sigma': optimized_params[1],
         'gamma': optimized_params[2],
-        'alpha': optimized_params[3],
-        'delta': optimized_params[4]
+        'delta': optimized_params[3],
+        'q': optimized_params[4],
+        'z': optimized_params[5]
     }
     return params_dict
 
+
 #%% Code modélisation avec vaccination
 def sir_model_with_vaccination(y, t, params):
-    """
-    SIR model differential equations with vaccination
-    y: list of [S, E, I, R, V, V_failed, D] values at time t
-    t: time
-    params: dictionary of parameters
-    """
-    S, E, I, R, V, V_failed, D = y
-    beta = params['beta']
-    sigma = params['sigma']
-    gamma = params['gamma']
-    alpha = params['alpha']
-    v_rate = params['v_rate']
-    v_success = params['v_success']
-    alpha_v = params['alpha_v']
-    alpha_v_failed = params['alpha_v_failed']
-    delta = params['delta']
-    dSdt = -beta * S * I - v_rate * S + alpha_v * V + alpha * R + alpha_v_failed * V_failed
-    dEdt = beta * S * I - sigma * E + V_failed * beta * I
-    dIdt = sigma * E - gamma * I - delta * I
-    dRdt = gamma * I - alpha * R 
-    dDdt = delta * I
-    dVdt = v_rate * S * v_success - alpha_v * V
-    dV_failedt = v_rate * S * (1-v_success) - V_failed * beta * I - alpha_v_failed * V_failed
-    return [dSdt, dEdt, dIdt, dRdt, dVdt, dV_failedt, dDdt]
+        """
+        SEIRDV model differential equations
+        y: list of [S, E, I, R, V, D] values at time t
+        t: time
+        params: dictionary of parameters
+        """
+        S, E, I, R, V, D = y
+        N = S + E + I + R + V
+        beta = params['beta']
+        eta = params['eta']
+        gamma = params['gamma']
+        phi = params['phi']
+        alpha = params['alpha']
+        dSdt = -beta * S * I/N - alpha * S
+        dEdt = beta * S * I/N - eta * E
+        dIdt = eta * E - gamma * I
+        dRdt = gamma * (1 - phi) * I
+        dDdt = gamma * phi * I
+        dVdt = alpha * S
+        return [dSdt, dEdt, dIdt, dRdt, dVdt, dDdt]
 
 def plot_sir_model_simulation(result, days, population_size, title_addon='', highlight=None):
     t = np.linspace(0, days, days)
     result_percentage = (result / population_size) * 100
     plt.figure(figsize=(10, 6))
-    labels = ['Susceptible', 'Exposed', 'Infected', 'Recovered', 'Vaccinated', 'Failed vaccination', 'Dead']
+    labels = ['Susceptible', 'Exposed', 'Infected', 'Recovered', 'Vaccinated', 'Dead']
     for i in range(result_percentage.shape[1]):
         if highlight == labels[i]:
             plt.plot(t, result_percentage[:, i], label=labels[i], lw=3)
@@ -437,7 +452,7 @@ def plot_sir_model_simulation(result, days, population_size, title_addon='', hig
             plt.plot(t, result_percentage[:, i], label=labels[i])
     plt.xlabel('Time (days)')
     plt.ylabel('Percentage of Population')
-    plt.title('SEIRDVVf Model')
+    plt.title('SEIRDV Model')
     plt.legend()
     plt.grid(True)
     st.pyplot(plt.gcf())
@@ -445,7 +460,7 @@ def plot_sir_model_simulation(result, days, population_size, title_addon='', hig
 def generate_sir_model_data(population_size, params, days, y0=None, seasonal_amplitude=False, noise_std=False):
     t = np.linspace(0, days, days)
     if y0 is None:
-        y0 = [population_size - 1, 0, 1, 0, 0, 0, 0]
+        y0 = [population_size - 100, 0, 100, 0, 0, 0]
     # Solve the differential equations
     result = odeint(sir_model_with_vaccination, y0, t, args=(params,))
     strength_factor = max(0.1, 0.1 * (population_size / 40))
@@ -460,7 +475,7 @@ def generate_sir_model_data(population_size, params, days, y0=None, seasonal_amp
     # Clip negative values to zero
     result[result < 0] = 0
     # Create DataFrame
-    df = pd.DataFrame(result, columns=['Susceptible', 'Exposed', 'Infected', 'Recovered', 'Vaccinated', 'Failed vaccination', 'Dead'])
+    df = pd.DataFrame(result, columns=['Susceptible', 'Exposed', 'Infected', 'Recovered', 'Vaccinated', 'Dead'])
     return (df, result)
 
 def bilateral_filter(df, kernel_size=23, sigma_color=777777, sigma_space=70):
@@ -483,14 +498,10 @@ def bilateral_filter(df, kernel_size=23, sigma_color=777777, sigma_space=70):
 def mse_loss(params, t, data, y0):
     params_dict = {
         'beta': params[0],
-        'sigma': params[1],
+        'eta': params[1],
         'gamma': params[2],
-        'alpha': params[3],
-        'v_rate': params[4],
-        'v_success': params[5],
-        'alpha_v': params[6],
-        'alpha_v_failed': params[7],
-        'delta': params[8]
+        'phi': params[3],
+        'alpha': params[4],
     }
     result = odeint(sir_model_with_vaccination, y0, t, args=(params_dict,))
     loss = np.mean((result[:, 0] - data['Susceptible'])**2 +
@@ -498,28 +509,23 @@ def mse_loss(params, t, data, y0):
                    (result[:, 2] - data['Infected'])**2 +
                    (result[:, 3] - data['Recovered'])**2 +
                    (result[:, 4] - data['Vaccinated'])**2 +
-                   (result[:, 5] - data['Failed vaccination'])**2 +
-                   (result[:, 6] - data['Dead'])**2)
+                   (result[:, 5] - data['Dead'])**2)
     return loss
 
 def optimize_params(data, population_size, initial_params, og_params):
     days = len(data)
     t = np.linspace(0, days, days)
     data = bilateral_filter(data)
-    y0 = [data['Susceptible'][0], data['Exposed'][0], data['Infected'][0], data['Recovered'][0], data['Vaccinated'][0], data['Failed vaccination'][0], data['Dead'][0]]
+    y0 = [data['Susceptible'][0], data['Exposed'][0], data['Infected'][0], data['Recovered'][0], data['Vaccinated'][0], data['Dead'][0]]
     bounds = [
         (0, 0.1),  # beta
-        (0, 0.5),     # sigma
+        (0, 0.5),     # eta
         (0, 0.5),     # gamma
+        (0, 0.2),     # phi
         (0, 0.5),     # alpha
-        (0, 0.1),     # v_rate
-        (0, 1),     # v_success
-        (0, 0.5),     # alpha_v
-        (0, 0.5),     # alpha_v_failed
-        (0, 0.2)      # delta
     ]
-    lower_bounds = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-    upper_bounds = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+    lower_bounds = [0, 0, 0, 0, 0]
+    upper_bounds = [1, 1, 1, 1, 1]
     result_min = minimize(mse_loss, initial_params, args=(t, data, y0), bounds=bounds, method='L-BFGS-B')
     params_min = create_params_dict(result_min.x)
     error_min = calculate_summed_error(og_params, params_min)
@@ -529,14 +535,10 @@ def optimize_params(data, population_size, initial_params, og_params):
 def create_params_dict(optimized_params):
     params_dict = {
         'beta': optimized_params[0],
-        'sigma': optimized_params[1],
+        'eta': optimized_params[1],
         'gamma': optimized_params[2],
-        'alpha': optimized_params[3],
-        'v_rate': optimized_params[4],
-        'v_success': optimized_params[5],
-        'alpha_v': optimized_params[6],
-        'alpha_v_failed': optimized_params[7],
-        'delta': optimized_params[8]
+        'phi': optimized_params[3],
+        'alpha': optimized_params[4]
     }
     return params_dict
 
@@ -544,7 +546,7 @@ def calculate_summed_error(og_params, optimized_params):
     summed_error = sum(abs(float(optimized_params[key]) - float(og_params[key])) for key in og_params)
     return summed_error
 
-#%% Set up de la bibliography
+#%% Set up de la bibliographie
 BIBLIOGRAPHY = {
     'Prorok': {
         'authors': 'Aleksandra Prorok & Marcin Dwużnik',
@@ -570,6 +572,27 @@ BIBLIOGRAPHY = {
         'number':'1',
         'pages':'19',
         'year':2022
+},
+    'Kukuseva':{
+        'title':'Mathematical Analysis and Simulation of Measles Infection Spread with SEIRV+ D Model',
+        'authors':'Kukuseva & Maja and Stojkovic, Natasa and Martinovska Bande, Cveta and Koceva Lazarova, Limonka',
+        'journal':'ICT Innovations 2023 Web proceedings',
+        'pages':'39--47',
+        'year':2024
+},
+    'Antonelli':{
+        'title':'Switched forced SEIRDV compartmental models to monitor COVID-19 spread and immunization in Italy',
+        'authors':'Antonelli & E and Piccolomini, EL and Zama',
+        'journal':'Infectious Disease Modelling',
+        'volume':'7',
+        'pages':'1--15',
+        'year':2022
+},
+    'vynnycky':{
+        'title':'An introduction to infectious disease modelling',
+        'authors': 'Vynnycky & Emilia and White, Richard',
+        'year':2010,
+        'publisher':'Oxford university press'
 }
 }
 # Variable globale pour suivre les citations utilisées
@@ -702,7 +725,7 @@ st.sidebar.markdown(
 )
 page = st.sidebar.radio(
     "",
-    ["Introduction", "Modèle avec restrictions", "Modèle avec vaccination", "Conclusion et discussion","Bibliographie"]
+    ["Introduction", "Modèle avec restrictions", "Modèle avec vaccination","Bibliographie"]
 )
 
 #%% Page d'introduction
@@ -712,19 +735,41 @@ if page == "Introduction":
     <h1>Le modèle SEIRD(V) en épidémiologie : simulations sous certaines conditions</h1>  
 </div>          
 """, unsafe_allow_html=True)
-    st.markdown("""
+    citations = [cite('tamasiga'), cite('Kukuseva')]
+    citations_clean = [c.strip('()') for c in citations]
+    st.markdown(f"""
         <p class = "paragraph">
-        Le modèle choisi est un modèle SEIRD classique que l'on va simuler en modulant plusieurs variables : la population initiale, la probabilité d'infection,... Ces variables sont modulables entre plusieurs valeurs tirées de la bibliographie.
+    Cette interface va permettre de simuler des modèles épidémiologiques. Deux aspects de l'épidémiologie sont simulables : les restrictions (masques, confinement et isolement) à travers les modèles SIR, SEIR, SIRD et SEIRD, et la vaccination avec un modèle SEIRVD. 
         </p>
         <p class = "paragraph">
-        Deux choix de simulations sont possibles : une simulation avec des restrictions (port du masque et confinement) et une simulation avec des vaccins. La simulation avec des vaccins est donc un modèle plus complet et complexe : un modèle SEIRVD.
+    Les modèles avec restrictions sont basés sur la littérature {cite('melo')} et adaptés et simplifiés pour cette interface.
+        </p>
+        <p class = "paragraph">
+    Le modèle avec vaccination est basé sur la littérature {cite('Antonelli')} et adaptés pour cette interface. Il est possible de simuler différentes épidémies avec des paramètres estimés à partir de données réelles ({', '.join(citations_clean)}).
         </p>
                 """,unsafe_allow_html=True)
     st.markdown(f"""
         <p class = "paragraph">
-    Le code utilisé pour les simulations est celui du projet d'Aleksandra Prorok et de Marcin Dwużnik {cite('Prorok')} et a été adapté pour cette présentation. Les modèles et équations sont basées sur les travaux de recherche de l'équipe de recherche de Melo {cite('melo')} pour le modèle SEIRD classique, et de Tamasiga {cite('tamasiga')} pour le modèle SEIRDV.
+    Le code utilisé pour les simulations est celui du projet d'Aleksandra Prorok et de Marcin Dwużnik {cite('Prorok')}. Les modèles et équations sont basées sur les travaux de recherche de l'équipe de recherche de Melo {cite('melo')} pour le modèle SEIRD classique, et de Tamasiga {cite('tamasiga')} pour le modèle SEIRDV.
+    Le code et les modèles ont été adaptés pour cette présentation.
         </p>
                 """,unsafe_allow_html=True)
+    st.markdown("""
+        <p class = "paragraph">
+    
+        </p>
+                """,unsafe_allow_html=True)
+    st.markdown("""
+        <p class = "paragraph">
+    Interface réalisée par Justine Marcaillou, M2 MODE, 2025-2026.
+        </p>
+                """,unsafe_allow_html=True)
+
+    col1,col2=st.columns(2)
+    with col1:
+        st.image("C:/Users/Tikan/Documents/M2/FACE/logo-institut-agro.png")
+    with col2:
+        st.image("C:/Users/Tikan/Documents/M2/FACE/OIP.jpg")
 
 
 #%% Page modèles avec restrictions
@@ -732,11 +777,19 @@ elif page == "Modèle avec restrictions":
     st.markdown("""<div class="header">
     <h2 style="text-align: center";>Modèles avec restrictions</h2>
     </div>""",unsafe_allow_html=True)
-    st.markdown("""
+    st.markdown(f"""
         <p class = "paragraph">
-    Il est possible de simuler quatre modèles : SIR, SIRD, SEIR et SEIRD. 
+    Il est possible de simuler quatre modèles : SIR, SIRD, SEIR et SEIRD. Ils sont tous basés sur les travaux de recherche sur les modèles SEIRD et l'étude de l'impact du contrôle dessus {cite('melo')}. 
+    L'application d'un "contrôle" consiste à appliquer un coefficient de confinement et un coefficient d'isolement respectivement aux exposés et aux infectés. Dans leurs travaux, ces coefficients sont fonction du temps, mais par simplification ici ce sont des paramètres à valeur fixe.
+    Pour modéliser le port du masque sans confinement ou isolement, il suffit de diminuer β. Par simplification, ici β est un unique paramètre, mais il peut être décomposé {cite('vynnycky')} en le produit du taux de contact par la probabilité de transmission de la maladie.
+    Ainsi, le port du masque permettant de diminuer le taux de contact, il peut être modélisé ici en diminuant β directement.
+    Les modèles autres que SEIRD ont donc été adaptés pour la présentation.
+        </p>
+        <p class = "paragraph">
+        Les modèles autres que SEIRD ont été adaptés du modèle SEIRD.
         </p>
                 """,unsafe_allow_html=True)
+    
     st.sidebar.header("Choix du modèle")
     include_E = st.sidebar.checkbox("Compartiment E (Exposés)", value=True)
     include_D = st.sidebar.checkbox("Compartiment D (Décédés)", value=True)
@@ -772,10 +825,10 @@ elif page == "Modèle avec restrictions":
             st.markdown(r"""
     $$
     \begin{aligned}
-    \frac{dS}{dt} &= -\beta S I + \alpha R \\
-    \frac{dE}{dt} &= \beta S I - \sigma E \\
-    \frac{dI}{dt} &= \sigma E - \gamma I - \delta I \\
-    \frac{dR}{dt} &= \gamma I - \alpha R \\
+    \frac{dS}{dt} &= -\beta S I \\
+    \frac{dE}{dt} &= \beta S I - \sigma E - q E\\
+    \frac{dI}{dt} &= \sigma E - \gamma I - \delta I - z I \\
+    \frac{dR}{dt} &= \gamma I + z I \\
     \frac{dD}{dt} &= \delta I \\
     \end{aligned}
     $$
@@ -784,10 +837,10 @@ elif page == "Modèle avec restrictions":
             st.markdown(r"""
     $$
     \begin{aligned}
-    \frac{dS}{dt} = -\beta S I + \alpha R \\
-    \frac{dE}{dt} = \beta S I - \sigma E \\
-    \frac{dI}{dt} = \sigma E - \gamma I \\
-    \frac{dR}{dt} = \gamma I - \alpha R \\
+    \frac{dS}{dt} = -\beta S I \\
+    \frac{dE}{dt} = \beta S I - \sigma E - q I \\
+    \frac{dI}{dt} = \sigma E - \gamma I - z I \\
+    \frac{dR}{dt} = \gamma I + z I \\
     \end{aligned}
     $$
     """, unsafe_allow_html=True)
@@ -795,9 +848,9 @@ elif page == "Modèle avec restrictions":
             st.markdown(r"""
     $$
     \begin{aligned}
-    \frac{dS}{dt} = -\beta S I + \alpha R \\
-    \frac{dI}{dt} = \beta S I - \gamma I - \delta I \\
-    \frac{dR}{dt} = \gamma I - \alpha R \\
+    \frac{dS}{dt} = -\beta S I  \\
+    \frac{dI}{dt} = \beta S I - \gamma I - \delta I - z I \\
+    \frac{dR}{dt} = \gamma I + z I \\
     \frac{dD}{dt} = \delta I \\
     \end{aligned}
     $$
@@ -806,9 +859,9 @@ elif page == "Modèle avec restrictions":
             st.markdown(r"""
     $$
     \begin{aligned}
-    \frac{dS}{dt} = -\beta S I + \alpha R \\
-    \frac{dI}{dt} = \beta S I - \gamma I \\
-    \frac{dR}{dt} = \gamma I - \alpha R \\
+    \frac{dS}{dt} = -\beta S I \\
+    \frac{dI}{dt} = \beta S I - \gamma I - z I \\
+    \frac{dR}{dt} = \gamma I + z I \\
     \end{aligned}
     $$
     """, unsafe_allow_html=True)
@@ -817,105 +870,106 @@ elif page == "Modèle avec restrictions":
         if model_type == "SEIRD":
             st.markdown("""
     <div style="line-height: 1;">
-    <p><strong>β:</strong> infection rate - it is influenced by the number of contacts and probability of infecting,</p>
-    <p><strong>γ:</strong> recovery rate,</p>
-    <p><strong>σ:</strong> infection rate in exposed individuals,</p>
-    <p><strong>α:</strong> rate at which individuals leave the Recovered compartment,</p>
-    <p><strong>δ:</strong> mortality rate.</p>
+    <p><strong>β:</strong> infection rate</p>
+    <p><strong>γ:</strong> recovery rate</p>
+    <p><strong>σ:</strong> incubation rate</p>
+    <p><strong>z:</strong> portion of people going into isolation</p>
+    <p><strong>q:</strong> portion of people going into quarantine</p>
+    <p><strong>δ:</strong> mortality rate</p>
     </div>
     """, unsafe_allow_html=True)
         elif model_type == "SEIR":
             st.markdown("""
     <div style="line-height: 1;">
-    <p><strong>β:</strong> infection rate - it is influenced by the number of contacts and probability of infecting,</p>
-    <p><strong>γ:</strong> recovery rate,</p>
-    <p><strong>σ:</strong> infection rate in exposed individuals,</p>
-    <p><strong>α:</strong> rate at which individuals leave the Recovered compartment,</p>
+    <p><strong>β:</strong> infection rate</p>
+    <p><strong>γ:</strong> recovery rate</p>
+    <p><strong>σ:</strong> incubation rate</p>
+    <p><strong>z:</strong> portion of people going into isolation</p>
+    <p><strong>q:</strong> portion of people going into quarantine</p>
     </div>
     """, unsafe_allow_html=True)
         elif model_type == "SIRD":
             st.markdown("""
     <div style="line-height: 1;">
-    <p><strong>β:</strong> infection rate - it is influenced by the number of contacts and probability of infecting,</p>
-    <p><strong>γ:</strong> recovery rate,</p>
-    <p><strong>α:</strong> rate at which individuals leave the Recovered compartment,</p>
-    <p><strong>δ:</strong> mortality rate.</p>
+    <p><strong>β:</strong> infection rate</p>
+    <p><strong>γ:</strong> recovery rate</p>
+    <p><strong>z:</strong> portion of people going into isolation</p>
+    <p><strong>δ:</strong> mortality rate</p>
     </div>
     """, unsafe_allow_html=True)
         else:
             st.markdown("""
     <div style="line-height: 1;">
-    <p><strong>β:</strong> infection rate - it is influenced by the number of contacts and probability of infecting,</p>
-    <p><strong>γ:</strong> recovery rate,</p>
-    <p><strong>α:</strong> rate at which individuals leave the Recovered compartment,</p>
+    <p><strong>β:</strong> infection rate</p>
+    <p><strong>γ:</strong> recovery rate</p>
+    <p><strong>z:</strong> portion of people going into isolation</p>
     </div>
     """, unsafe_allow_html=True)
 
     with colc:
         if model_type == "SEIRD":
             st.graphviz_chart("""
-        digraph SEIRV {
-            rankdir=LR;
-            node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
-            edge [fontname="Inclusive Sans"];
-            S [label="S\nSusceptibles", fillcolor="#87CEEB"];
-            E [label="E\nExposés", fillcolor="#FFD700"];
-            I [label="I\nInfectieux", fillcolor="#FF6347"];
-            R [label="R\nRétablis", fillcolor="#90EE90"];
-            D [label="D\nDécédés", fillcolor="#696969"];
-            S -> E [label="β"];
-            E -> I [label="σ"];
-            I -> R [label="γ"];
-            I -> D [label="δ"];
-            R -> S [label="α"];
-        }
+    digraph SEIRD {
+        rankdir=LR;
+        node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
+        edge [fontname="Inclusive Sans"];
+        S [label="S\nSusceptibles", fillcolor="#87CEEB"];
+        E [label="E\nExposés", fillcolor="#FFD700"];
+        I [label="I\nInfectieux", fillcolor="#FF6347"];
+        R [label="R\nRétablis", fillcolor="#90EE90"];
+        D [label="D\nDécédés", fillcolor="#696969"];
+        S -> E [label="β"];
+        E -> I [label="σ"];
+        E -> R [label="q"];
+        I -> R [label="γ, z"];
+        I -> D [label="δ"];
+    }
     """)
+
         elif model_type == "SEIR":
             st.graphviz_chart("""
-        digraph SEIRV {
-            rankdir=LR;
-            node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
-            edge [fontname="Inclusive Sans"];
-            S [label="S\nSusceptibles", fillcolor="#87CEEB"];
-            E [label="E\nExposés", fillcolor="#FFD700"];
-            I [label="I\nInfectieux", fillcolor="#FF6347"];
-            R [label="R\nRétablis", fillcolor="#90EE90"];
-            S -> E [label="β"];
-            E -> I [label="σ"];
-            I -> R [label="γ"];
-            R -> S [label="α"];
-        }
-    """)
+digraph SEIR {
+    rankdir=LR;
+    node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
+    edge [fontname="Inclusive Sans"];
+    S [label="S\nSusceptibles", fillcolor="#87CEEB"];
+    E [label="E\nExposés", fillcolor="#FFD700"];
+    I [label="I\nInfectieux", fillcolor="#FF6347"];
+    R [label="R\nRétablis", fillcolor="#90EE90"];
+    S -> E [label="β"];
+    E -> I [label="σ"];
+    E -> R [label="q"];
+    I -> R [label="γ, z"];
+}
+""")
         elif model_type == "SIRD":
             st.graphviz_chart("""
-        digraph SEIRV {
-            rankdir=LR;
-            node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
-            edge [fontname="Inclusive Sans"];
-            S [label="S\nSusceptibles", fillcolor="#87CEEB"];
-            I [label="I\nInfectieux", fillcolor="#FF6347"];
-            R [label="R\nRétablis", fillcolor="#90EE90"];
-            D [label="D\nDécédés", fillcolor="#696969"];
-            S -> I [label="β"];
-            I -> R [label="γ"];
-            I -> D [label="δ"];
-            R -> S [label="α"];
-        }
-    """)
+  digraph SIRD {
+    rankdir=LR;
+    node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
+    edge [fontname="Inclusive Sans"];
+    S [label="S\nSusceptibles", fillcolor="#87CEEB"];
+    I [label="I\nInfectieux", fillcolor="#FF6347"];
+    R [label="R\nRétablis", fillcolor="#90EE90"];
+    D [label="D\nDécédés", fillcolor="#696969"];
+    S -> I [label="β"];
+    I -> R [label="γ, z"];
+    I -> D [label="δ"];
+}
+""")
         else:
             st.graphviz_chart("""
-        digraph SEIRV {
-            rankdir=LR;
-            node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
-            edge [fontname="Inclusive Sans"];
-            S [label="S\nSusceptibles", fillcolor="#87CEEB"];
-            I [label="I\nInfectieux", fillcolor="#FF6347"];
-            R [label="R\nRétablis", fillcolor="#90EE90"];
-            S -> I [label="β"];
-            I -> R [label="γ"];
-            R -> S [label="α"];
-        }
-    """)
+digraph SIR {
+    rankdir=LR;
+    node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
+    edge [fontname="Inclusive Sans"];
+    S [label="S\nSusceptibles", fillcolor="#87CEEB"];
+    I [label="I\nInfectieux", fillcolor="#FF6347"];
+    R [label="R\nRétablis", fillcolor="#90EE90"];
+    S -> I [label="β"];
+    I -> R [label="γ, z"];
+}
+""")
     st.markdown("""
 <div class="header">
     <h3>Simulation du modèle :</h3>  
@@ -925,46 +979,60 @@ elif page == "Modèle avec restrictions":
     st.write(f"Modèle choisi : {model_type}. Ajustez les différents paramètres :")
 
     col1,col2= st.columns(2)
-    with col1:
-        st.write("**Conditions de la simulation :**")
-        noise_std = st.checkbox('Include Noise Standard Deviation')
-        days = st.slider('Number of Days', min_value=10, max_value = 1825, step=10)
-        population_size = st.slider('Population Size', min_value=50, max_value = 10000, step=100)
-        seasonal_amplitude = 'Include Seasonal Amplitude'
-    with col2:
+    with st.sidebar:
         st.write("**Paramètres du modèle :**")
-        prob_of_infecting = st.number_input('Probability of Infecting', value=1/100, format="%.3f", step=0.001)
-        avg_no_contacts_per_individual = st.number_input('Average Number of Contacts per Individual', value=12)
-        beta = prob_of_infecting * avg_no_contacts_per_individual / population_size
+        beta = st.slider(
+            'Infection Rate (β)',
+            min_value=0.0,
+            max_value=1.0,
+            value=0.2,
+            step=0.01
+        )
         if model_type == "SEIRD":
             params = {
-        'beta': beta,
-        'sigma': st.slider('Infection Rate (σ)', min_value=0.0, max_value=1.0, value=0.14, step=0.01),
-        'gamma': st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0, value=1/21, step=0.01),
-        'alpha': st.slider('Rate at which individuals lose their immunity (α)', min_value=0.0, max_value=1.0, value=0.0055, format="%.3f", step=0.001),
-        'delta': st.slider('Mortality Rate (δ)', min_value=0.0, max_value=1.0, value=0.03, format="%.3f", step=0.001)
-    }
+                'beta': beta,
+                'sigma': st.slider('Incubation Rate (σ)', 0.0, 1.0, 0.14, 0.01),
+                'gamma': st.slider('Recovery Rate (γ)', 0.0, 1.0, 1/21, 0.01),
+                'delta': st.slider('Mortality Rate (δ)', 0.0, 1.0, 0.03, 0.001),
+                'q': None,  # Will be set in col2
+                'z': None   # Will be set in col2
+            }
         elif model_type == "SEIR":
             params = {
-        'beta': beta,
-        'sigma': st.slider('Infection Rate (σ)', min_value=0.0, max_value=1.0, value=0.14, step=0.01),
-        'gamma': st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0, value=1/21, step=0.01),
-        'alpha': st.slider('Rate at which individuals lose their immunity (α)', min_value=0.0, max_value=1.0, value=0.0055, format="%.3f", step=0.001),
-    }
+                'beta': beta,
+                'sigma': st.slider('Incubation Rate (σ)', 0.0, 1.0, 0.14, 0.01),
+                'gamma': st.slider('Recovery Rate (γ)', 0.0, 1.0, 1/21, 0.01),
+                'q': None,  # Will be set in col2
+                'z': None   # Will be set in col2
+            }
         elif model_type == "SIRD":
             params = {
-        'beta': beta,
-        'gamma': st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0, value=1/21, step=0.01),
-        'alpha': st.slider('Rate at which individuals lose their immunity (α)', min_value=0.0, max_value=1.0, value=0.0055, format="%.3f", step=0.001),
-        'delta': st.slider('Mortality Rate (δ)', min_value=0.0, max_value=1.0, value=0.03, format="%.3f", step=0.001)
-    }
+                'beta': beta,
+                'gamma': st.slider('Recovery Rate (γ)', 0.0, 1.0, 1/21, 0.01),
+                'delta': st.slider('Mortality Rate (δ)', 0.0, 1.0, 0.03, 0.001),
+                'z': None   # Will be set in col2
+            }
         elif model_type == "SIR":
             params = {
-        'beta': beta,
-        'gamma': st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0, value=1/21, step=0.01),
-        'alpha': st.slider('Rate at which individuals lose their immunity (α)', min_value=0.0, max_value=1.0, value=0.0055, format="%.3f", step=0.001),
-    }
-    cola,colb=st.columns([5,1])
+                'beta': beta,
+                'gamma': st.slider('Recovery Rate (γ)', 0.0, 1.0, 1/21, 0.01),
+                'z': None   # Will be set in col2
+            }
+    with col1:
+        st.write("**Conditions de la simulation :**")
+        days = st.slider('Number of Days', min_value=10, max_value=1825, step=10)
+        population_size = st.slider('Population Size', min_value=50, max_value=10000, step=100)
+        noise_std = st.checkbox('Include Noise Standard Deviation')
+        seasonal_amplitude = 'Include Seasonal Amplitude'
+    with col2:
+        st.write("**Paramètres d'intervention :**")
+        if model_type in ["SEIRD", "SEIR"]:
+            q = st.slider('Isolation Rate of Exposed (q)', 0.0, 1.0, 0.05, 0.01)
+            params['q'] = q
+        if model_type in ["SEIRD", "SEIR", "SIRD", "SIR"]:
+            z = st.slider('Isolation Rate of Infected (z)', 0.0, 1.0, 0.05, 0.01)
+            params['z'] = z
+    cola,colb=st.columns([2,1])
     with cola:
         if model_type == "SEIRD":
             df, result = generate_sir_model_data_masks_SEIRD(population_size, params, days, seasonal_amplitude=seasonal_amplitude, noise_std=noise_std)
@@ -981,7 +1049,6 @@ elif page == "Modèle avec restrictions":
 
     if 'stored_plots_models' not in st.session_state:
         st.session_state.stored_plots_models = []
-
     col_btna, col_btnb = st.columns([1, 4])
     with col_btna:
         if st.button('Stocker ce graphique', key='store_model'):
@@ -1072,129 +1139,171 @@ elif page == "Modèle avec vaccination":
     st.markdown("""<div class="header">
         <h2 style="text-align: center";>Modèle avec vaccination</h2>
         </div>""",unsafe_allow_html=True)
-    st.markdown("""
+    st.markdown(f"""
             <p class = "paragraph">
-        Le modèle choisi est un modèle où l'on modélise les individus vaccinés par deux nouveaux compartiments, en fonction de l'efficacité du vaccin : le vaccin est soit efficace (V) ou inefficace (V_failed). Cependant, dans tous les cas l'imumunité n'est pas définitive : il est toujours possible de retomber malade (donc de retourner dans le compartiment S).
+        Le modèle est un modèle SEIRVD écrit à partir du Covid-19 en Italie {cite('Antonelli')}. Il présente plusieurs hypothèses : la taille de la population est constante, on ne prend pas en compte ni les naissances ni les décès. De plus, l'immunité est acquise à vie, par vaccination ou guérison. 
             </p>
                     """,unsafe_allow_html=True)
-    st.markdown("""
+    
+    col1,col2 = st.columns(2    )
+    with col1:
+        st.markdown("""
     <div class="header">
         <h3>Equations du modèle :</h3>  
     </div>
     <div style="margin-top: -50px;"></div>
     """, unsafe_allow_html=True)
-    cola,colb = st.columns(2)
+    with col2:
+        st.markdown("""
+        <div class="header">
+            <h3>Schéma du modèle :</h3>  
+            <div style="margin-bottom: -70px;"></div>
+        </div>          
+        """, unsafe_allow_html=True)
+    cola,colb,colc = st.columns([2,2,5])
     with cola:
         st.markdown(r"""
     $$
     \begin{aligned}
-    \frac{dS}{dt} &= -\beta S I - v_{rate} S + \alpha_v V + \alpha R + \alpha_{v_failed} V_{failed} \\
-    \frac{dE}{dt} &= \beta S I - \sigma E + \beta I V_{failed} \\
-    \frac{dI}{dt} &= \sigma E - \gamma I - \delta I \\
-    \frac{dR}{dt} &= \gamma I - \alpha R \\
-    \frac{dD}{dt} &= \delta I \\
-    \frac{dV}{dt} &= v_{rate} S \cdot v_{success} - \alpha_v V \\
-    \frac{dV_{failed}}{dt} &= v_{rate} S (1 - v_{success}) - \beta I V_{failed} - \alpha_{v_failed} V_{failed}
+    \frac{dS}{dt} &= -\frac{\beta S I}{N} - \alpha S \\
+    \frac{dE}{dt} &= \frac{\beta S I}{N} - \eta E \\
+    \frac{dI}{dt} &= \eta E - \gamma I \\
+    \frac{dR}{dt} &= \gamma (1 - \varphi) I \\
+    \frac{dD}{dt} &= \gamma \varphi I \\
+    \frac{dV}{dt} &= \alpha S
     \end{aligned}
     $$
     """, unsafe_allow_html=True)
     with colb:
         st.markdown("""
     <div style="line-height: 1;">
-    <p><strong>β:</strong> infection rate - it is influenced by the number of contacts and probability of infecting,</p>
-    <p><strong>γ:</strong> recovery rate,</p>
-    <p><strong>σ:</strong> infection rate in exposed individuals,</p>
-    <p><strong>α:</strong> rate at which individuals leave the Recovered compartment,</p>
-    <p><strong>α<sub>v</sub>:</strong> rate of immunity loss after the vaccination,</p>
-    <p><strong>α<sub>v_failed</sub>:</strong> rate at which individuals leave the Failed vaccination compartment - enables them to revaccinate,</p>
-    <p><strong>v<sub>rate</sub>:</strong> vaccination rate,</p>
-    <p><strong>v<sub>success</sub>:</strong> rate of vaccine efficacy,</p>
-    <p><strong>δ:</strong> mortality rate.</p>
+    <p><strong>β:</strong> infection rate </p>
+    <p><strong>γ:</strong> recovery rate</p>
+    <p><strong>η:</strong> incubation rate</p>
+    <p><strong>φ:</strong> mortality rate</p>
+    <p><strong>α:</strong> vaccination rate</p>              
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    <div class="header">
-        <h3>Schéma du modèle :</h3>  
-        <div style="margin-bottom: -70px;"></div>
-    </div>          
-    """, unsafe_allow_html=True)
-    st.graphviz_chart("""
-        digraph SEIRV {
-            rankdir=LR;
-            node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
-            edge [fontname="Inclusive Sans"];
-            S [label="S\nSusceptibles", fillcolor="#87CEEB"];
-            E [label="E\nExposés", fillcolor="#FFD700"];
-            I [label="I\nInfectieux", fillcolor="#FF6347"];
-            R [label="R\nRétablis", fillcolor="#90EE90"];
-            D [label="D\nDécédés", fillcolor="#696969"];
-            V [label="V\nVaccinés efficaces", fillcolor="#9370DB"];
-            VF [label="V_failed\nVaccination échouée", fillcolor="#FFA07A"];
-            S -> E [label="β"];
-            E -> I [label="σ"];
-            I -> R [label="γ"];
-            I -> D [label="δ"];
-            R -> S [label="α"];
-            S -> V [label="v_rate · v_success"];
-            S -> VF [label="v_rate · (1 - v_success)"];
-            V -> S [label="α_v"];
-            VF -> S [label="α_v_failed"];
-            VF -> E [label="β"];
-        }
-    """)
+    with colc:
+        st.graphviz_chart("""
+            digraph SEIRV {
+                rankdir=LR;
+                node [shape=box, style="rounded,filled", fontname="Inclusive Sans"];
+                edge [fontname="Inclusive Sans"];
+                S [label="S\nSusceptibles", fillcolor="#87CEEB"];
+                E [label="E\nExposés", fillcolor="#FFD700"];
+                I [label="I\nInfectieux", fillcolor="#FF6347"];
+                R [label="R\nRétablis", fillcolor="#90EE90"];
+                D [label="D\nDécédés", fillcolor="#696969"];
+                V [label="V\nVaccinés efficaces", fillcolor="#9370DB"];
+                S -> E [label="β"];
+                E -> I [label="η            ", labelfloat = True];
+                I -> R [label="γ(1-φ)"];
+                I -> D [label="γφ"];
+                S -> V [label ="α"];
+            }
+        """)
     st.markdown("""
     <div class="header">
         <h3>Simulation du modèle :</h3>  
     </div>
-    <div style="margin-bottom: -50px;"></div>
-    <div>
-        <p class = "paragraph">
-        Le modèle choisi est un modèle où l'on modélise les individus vaccinés par deux nouveaux compartiments, en fonction de l'efficacité du vaccin : le vaccin est soit efficace (V) ou inefficace (V_failed). Cependant, dans tous les cas l'imumunité n'est pas définitive : il est toujours possible de retomber malade (donc de retourner dans le compartiment S).
-            </p>
-    </div>        
+    <div style="margin-bottom: -50px;"></div>      
     """, unsafe_allow_html=True)
+    st.markdown(f"""
+        <div>
+        <p class = "paragraph">
+                Quatre simulations sont possibles : l'épidémie de Covid-19 en Tunisie {cite('tamasiga')} et en Afrique du Nord {cite('tamasiga')}, l'épidémie de rougeole en Macédoine du Nord {cite('Kukuseva')} et une simulation libre où il est possible de faire varier tous les paramètres.
+                Pour les trois simulations issues de la littérature il est possible de changer le taux de vaccination (α) afin d'explorer divers scénarios ; le paramètre est fixé au départ à la valeur associée aux données disponibles.
+            </p>
+    </div>
+       """, unsafe_allow_html=True)
 
     if 'stored_plots_v' not in st.session_state:
         st.session_state.stored_plots_v = []
 
-    col1, col2 = st.columns(2)
-
     st.write("**Conditions de la simulation :**")
     noise_std = st.checkbox('Include Noise Standard Deviation', key='noise_std_vaccination')
-    days = st.slider('Number of Days', min_value=1, max_value=1825, value=365, step=10, key='days_vaccination')
-    population_size = st.slider('Population Size', min_value=50, max_value=10000, value=1000, step=100, key='pop_vaccination')
+
+    col1, col2 = st.columns(2)
+    with col1:
+        days = st.slider('Number of Days', min_value=1, max_value=1825, value=365, step=10, key='days_vaccination')
+    with col2:
+        population_size = st.slider('Population Size', min_value=50, max_value=10000, value=1000, step=100, key='pop_vaccination')
     seasonal_amplitude = False  
 
-    st.write("**Paramètres de la simulation :**")
-    param_col1, param_col2 = st.columns(2)
-    with param_col1:
-        prob_of_infecting = st.slider('Probability of Infecting', min_value=0.0, max_value=1.0, value=0.3, step=0.1, key='prob_infecting_vaccination')
-        avg_no_contacts_per_individual = st.slider('Average Number of Contacts per Individual', min_value=1,max_value=100, value=12, step=1, key='contacts_vaccination')
-        beta = prob_of_infecting * avg_no_contacts_per_individual / population_size
-        sigma = st.slider('Infection Rate (σ)', min_value=0.0, max_value=1.0, value=0.14, step=0.01, key='sigma_vaccination')
-        gamma = st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0, value=1/21, step=0.01, key='gamma_vaccination')
-        delta = st.slider('Mortality Rate (δ)', min_value=0.0, max_value=1.0, value=0.03, format="%.3f", step=0.001, key='delta_vaccination')
-    with param_col2:
-        alpha = st.slider('Rate at which individuals lose their immunity (α)', min_value=0.0, max_value=1.0, value=0.0055, format="%.3f", step=0.001, key='alpha_vaccination')
-        v_rate = st.slider('Vaccination Rate (v_rate)', min_value=0.0, max_value=1.0, value=0.14, step=0.01, key='v_rate_vaccination')
-        v_success = st.slider('Vaccination success Rate (v_success)', min_value=0.0, max_value=1.0, value=0.14, step=0.01, key='v_success_vaccination')
-        alpha_v = st.slider('Rate at which individuals lose their immunity (acquired from the vaccine) (α_v)', min_value=0.0, max_value=1.0, value=0.14, step=0.01, key='alpha_v_vaccination')
-        alpha_v_failed = st.slider('Rate at which individuals lose their immunity (acquired from the failed vaccine) (α_v_failed)', min_value=0.0, max_value=1.0, value=0.14, step=0.01, key='alpha_v_failed_vaccination')
+    st.sidebar.write("**Choisir une épidémie :**")
+    scenario = st.sidebar.radio(
+        "",
+        ["Covid-19 - Tunisie", "Covid-19 - Afrique du Sud", "Rougeole - Macédoine du Nord", "Personnalisé"],
+        key='scenario_vaccination'
+    )
+
+    if scenario == "Covid-19 - Tunisie":
+        beta, eta, gamma, phi = 0.0532, 1.49, 0.053, 0.035
+        alpha = st.sidebar.slider('Vaccination rate (α)', min_value=0.0, max_value=1.0,
+                                value=0.0368, format="%.4f", step=0.001, key='alpha_tunisia')
+
+    elif scenario == "Covid-19 - Afrique du Sud":
+        beta, eta, gamma, phi = 0.1, 1.06, 0.0227, 0.06
+        alpha = st.sidebar.slider('Vaccination rate (α)', min_value=0.0, max_value=1.0,
+                                value=0.00847, format="%.5f", step=0.001, key='alpha_southafrica')
+
+    elif scenario == "Rougeole - Macédoine du Nord":
+        beta, eta, gamma, phi = 0.9, 0.125, 0.14285, 0.02
+        alpha = st.sidebar.slider('Vaccination rate (α)', min_value=0.0, max_value=1.0,
+                                value=0.744, format="%.3f", step=0.001, key='alpha_macedonia')
+
+    elif scenario == "Personnalisé":
+        with st.sidebar:
+            st.markdown("### Paramètres personnalisés")
+            beta = st.slider('Infection Rate (β)', min_value=0.0, max_value=1.0,
+                            value=0.14, step=0.01, key='beta_vaccination')
+            eta = st.slider('Incubation Rate (η)', min_value=0.0, max_value=1.0,
+                            value=0.14, step=0.01, key='eta_vaccination')
+            gamma = st.slider('Recovery Rate (γ)', min_value=0.0, max_value=1.0,
+                            value=1/21, step=0.01, key='gamma_vaccination')
+            alpha = st.slider('Vaccination rate (α)', min_value=0.0, max_value=1.0,
+                            value=0.0055, format="%.3f", step=0.001, key='alpha_vaccination')
+            phi = st.slider('Mortality Rate (φ)', min_value=0.0, max_value=1.0,
+                            value=0.03, format="%.3f", step=0.001, key='phi_vaccination')
+
+    # Affichage dans la zone principale
+    st.write(f"**Paramètres de l'épidémie '{scenario}' :**")
+    if scenario == "Covid-19 - Tunisie":
+            st.markdown(f"""
+            <p class = "paragraph">
+                Les paramètres sont issus de travaux de recherche d'une review scientifique de médecine {cite('tamasiga')}.
+                Le taux de vaccination (α) était de 0,0368.
+            </p>""", unsafe_allow_html=True)
+    elif scenario == "Covid-19 - Afrique du Sud":
+        st.markdown(f"""
+        <p class = "paragraph">
+            Les paramètres sont issus de travaux de recherche d'une review scientifique de médecine {cite('tamasiga')}.
+            Le taux de vaccination (α) était de 0,00847.
+        </p>""", unsafe_allow_html=True)
+    elif scenario == "Rougeole - Macédoine du Nord":
+        st.markdown(f"""
+        <p class = "paragraph">
+            Les paramètres sont issus de travaux de recherche d'une équipe de Macédoine du Nord {cite('Kukuseva')}.
+            Le taux de vaccination (α) était de 0,744.
+        </p>""", unsafe_allow_html=True)
+
+
+    st.write(f"β = {beta}, η = {eta}, γ = {gamma}, φ = {phi}, α = {alpha}")
 
     params = {
         'beta': beta,
-        'sigma': sigma,
+        'eta': eta,
         'gamma': gamma,
+        'phi': phi,
         'alpha': alpha,
-        'delta': delta,
-        'v_rate': v_rate,
-        'v_success': v_success,
-        'alpha_v': alpha_v,
-        'alpha_v_failed': alpha_v_failed
     }
 
     df, result = generate_sir_model_data(population_size, params, days, seasonal_amplitude=seasonal_amplitude, noise_std=noise_std)
-    plot_sir_model_simulation(result, days, population_size)
+
+    col1,col2 = st.columns([2,1])
+    with col1:
+        plot_sir_model_simulation(result, days, population_size)
 
     col_btn1, col_btn2 = st.columns([1,4])
     with col_btn1:
@@ -1239,10 +1348,6 @@ elif page == "Modèle avec vaccination":
                     with st.expander(f'Voir les paramètres du graphique {idx + 2}'):
                         st.write(stored_plot['params'])
     
-#%% Page conclusion et discussion
-elif page == "Conclusion et discussion":
-    st.subheader(" À propos")
-    st.write("Application avec design personnalisé")
 #%% Page bibliographie
 elif page == "Bibliographie":
     st.markdown("""<div class="header">
