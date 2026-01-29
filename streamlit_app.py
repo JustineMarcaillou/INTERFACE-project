@@ -1,5 +1,3 @@
-#https://github.com/prorokaleksandra/EpidemiologyModeling/blob/main/Report.pdf
-
 #%% Imports modélisation
 import numpy as np
 from scipy.integrate import odeint
@@ -767,9 +765,9 @@ if page == "Introduction":
 
     col1,col2=st.columns(2)
     with col1:
-        st.image("C:/Users/Tikan/Documents/M2/FACE/logo-institut-agro.png")
+        st.image("logo-institut-agro.png")
     with col2:
-        st.image("C:/Users/Tikan/Documents/M2/FACE/OIP.jpg")
+        st.image("OIP.jpg")
 
 
 #%% Page modèles avec restrictions
